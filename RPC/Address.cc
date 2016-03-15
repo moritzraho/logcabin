@@ -113,6 +113,25 @@ Address::getSockAddrLen() const
     return len;
 }
 
+
+std::string
+Address::getAddressAt(int i) const
+{
+    if (i >= hosts.size())
+        return "";
+    else
+        return hosts[i].first;
+}
+
+std::string
+Address::getPortAt(int i) const
+{
+    if (i >= hosts.size())
+        return "";
+    else
+        return hosts[i].second;
+}
+
 std::string
 Address::getResolvedString() const
 {

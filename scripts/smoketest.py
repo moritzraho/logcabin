@@ -25,12 +25,14 @@ Options:
   -h --help            Show this help message and exit
   --binary=<cmd>       Server binary to execute [default: build/LogCabin]
   --client=<cmd>       Client binary to execute
-                       [default: build/Examples/SmokeTest]
+                       [default: build/Examples/Benchmark]
   --reconf=<opts>      Additional options to pass through to the Reconfigure
                        binary. [default: '']
+  --clientops=<opts>   Additional options for client binary. [default: '']
   --servers=<num>      Number of servers [default: 5]
-  --timeout=<seconds>  Number of seconds to wait for client to complete before
-                       exiting with an error [default: 10]
+  --it=<num>           Number of times to run client binary [default: 1]
+  --sharedfs           Use this if the file system is shared.  
+
 """
 
 from __future__ import print_function, division
@@ -49,66 +51,94 @@ def main():
     reconf_opts = arguments['--reconf']
     if reconf_opts == "''":
         reconf_opts = ""
-    timeout = int(arguments['--timeout'])
+    client_opts = arguments['--clientops']
+    if client_opts == "''":
+        client_opts = ""
 
+    it_num = int(arguments['--it'])
+    max_ns = len(smokehosts)
+    if max_ns < num_servers:
+        print('Number of servers in config file: %s\n'%max_ns)
+        num_servers = max_ns
+    del max_ns
+    
+    sharedfs=False
+    if arguments['--sharedfs']:
+        sharedfs=True
+    
     server_ids = range(1, num_servers + 1)
-    cluster = "--cluster=%s" % ','.join([h[0] for h in
+    cluster = "--cluster=%s" % ','.join([h[1] for h in
                                         smokehosts[:num_servers]])
-    alphabet = [chr(ord('a') + i) for i in range(26)]
-    cluster_uuid = ''.join([random.choice(alphabet) for i in range(8)])
     with Sandbox() as sandbox:
-        sh('rm -rf smoketeststorage/')
-        sh('rm -f debug/*')
+        sh('rm -rf debug/')
         sh('mkdir -p debug')
-
+        sh('echo %s > debug/bench_cluster'%cluster)
+        
         for server_id in server_ids:
             host = smokehosts[server_id - 1]
             with open('smoketest-%d.conf' % server_id, 'w') as f:
                 f.write('serverId = %d\n' % server_id)
-                f.write('listenAddresses = %s\n' % host[0])
-                f.write('clusterUUID = %s\n' % cluster_uuid)
-                f.write('snapshotMinLogSize = 1024')
+                f.write('listenAddresses = %s\n' % host[1])
+                f.write('storagePath = %s'
+                        %os.path.join(os.getcwd(),'teststorage/'))
                 f.write('\n\n')
                 try:
                     f.write(open('smoketest.conf').read())
                 except:
                     pass
 
-
+        if not sharedfs:
+            print('Copying script files to remote servers',
+                  'and removing previous storage')
+            for server_id in server_ids:
+                host = smokehosts[server_id - 1]
+                sh('scp smoketest-%d.conf %s:%s'
+                   %(server_id, host[0],os.getcwd()))
+                sandbox.rsh(host[0], 'rm -rf teststorage')
+            print()
+        else:
+            sh('rm -rf teststorage')
+            
         print('Initializing first server\'s log')
         sandbox.rsh(smokehosts[0][0],
                     '%s --bootstrap --config smoketest-%d.conf' %
                     (server_command, server_ids[0]),
-                   stderr=open('debug/bootstrap', 'w'))
+                    stderr=open('debug/bootstrap_err', 'w'))
         print()
 
         for server_id in server_ids:
             host = smokehosts[server_id - 1]
             command = ('%s --config smoketest-%d.conf' %
                        (server_command, server_id))
-            print('Starting %s on %s' % (command, host[0]))
+            print('Starting %s on %s' % (command, host[1]))
             sandbox.rsh(host[0], command, bg=True,
-                        stderr=open('debug/%d' % server_id, 'w'))
+                        stderr=open('debug/%derr' % server_id, 'w'))
             sandbox.checkFailures()
 
         print('Growing cluster')
-        sh('build/Examples/Reconfigure %s %s set %s' %
+        #Carreful at verbosity here
+        sh('build/Examples/Reconfigure --verbosity=ERROR %s %s set %s' %
            (cluster,
             reconf_opts,
-            ' '.join([h[0] for h in smokehosts[:num_servers]])))
+            ' '.join([h[1] for h in smokehosts[:num_servers]])))
 
-        print('Starting %s %s on localhost' % (client_command, cluster))
-        client = sandbox.rsh('localhost',
-                             '%s %s' % (client_command, cluster),
-                             bg=True,
-                             stderr=open('debug/client', 'w'))
+        print('Starting %s %s on localhost over %d iterations'
+              % (client_command, cluster, it_num))
+        print('\n')
 
-        start = time.time()
-        while client.proc.returncode is None:
-            sandbox.checkFailures()
-            time.sleep(.1)
-            if time.time() - start > timeout:
-                raise Exception('timeout exceeded')
+#        time.sleep(100)
+        
+        for i in range(0,it_num):
+            # client = sandbox.rsh('localhost',
+            #                      ('%s %s %s'
+            #                       % (client_command, client_opts, cluster)),
+            #                      bg=False, stderr=open('debug/client', 'w')
+            # )
+
+            # small hack to redirect results to stderr for clean files
+            sh(('%s %s %s 1>&2 2>/dev/null'
+                % (client_command, client_opts, cluster)))
+
 
 if __name__ == '__main__':
     main()

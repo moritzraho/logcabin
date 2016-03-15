@@ -53,11 +53,12 @@ opts.AddVariables(
     ("LIBPATH", "Library paths that are passed to the linker", []),
     ("LINK", "Linker"),
     ("BUILDTYPE", "Build type (RELEASE or DEBUG)", "DEBUG"),
-    ("VERBOSE", "Show full build information (0 or 1)", "0"),
+    ("VERBOSE", "Show full build information (0 or 1)", "1"),
     ("NUMCPUS", "Number of CPUs to use for build (0 means auto).", "0"),
     ("VERSION", "Override version string", _VERSION),
     ("RPM_VERSION", "Override version number for rpm", _RPM_VERSION),
     ("RPM_RELEASE", "Override release string for rpm", _RPM_RELEASE),
+    ("IX", "build for IX", 0),
 )
 
 env = Environment(options = opts,
@@ -196,6 +197,15 @@ if env["VERBOSE"] == "0":
 
 env.Append(CPPPATH = '#')
 env.Append(CPPPATH = '#/include')
+env.Append(CPPPATH = '#/inc')
+
+if env["IX"]:
+    env.Append(CPPDEFINES=['IX_TARGET_BUILD'])
+    print "Building for IX"
+else:
+    #env.Append(CPPDEFINES=['IX_TARGET_BUILD = 0']
+    print "Building for Linux"
+
 
 # Define protocol buffers builder to simplify SConstruct files
 def Protobuf(env, source):
@@ -227,6 +237,7 @@ object_files = {}
 Export('object_files')
 
 Export('env')
+SConscript('libix/SConscript', variant_dir='build/libix')
 SConscript('Core/SConscript', variant_dir='build/Core')
 SConscript('Event/SConscript', variant_dir='build/Event')
 SConscript('RPC/SConscript', variant_dir='build/RPC')
@@ -236,7 +247,7 @@ SConscript('Client/SConscript', variant_dir='build/Client')
 SConscript('Storage/SConscript', variant_dir='build/Storage')
 SConscript('Server/SConscript', variant_dir='build/Server')
 SConscript('Examples/SConscript', variant_dir='build/Examples')
-SConscript('test/SConscript', variant_dir='build/test')
+#SConscript('test/SConscript', variant_dir='build/test')
 
 # This function is taken from http://www.scons.org/wiki/PhonyTargets
 def PhonyTargets(env = None, **kw):
@@ -250,13 +261,21 @@ PhonyTargets(doc = "doxygen docs/Doxyfile")
 PhonyTargets(docs = "doxygen docs/Doxyfile")
 PhonyTargets(tags = "ctags -R --exclude=build --exclude=docs .")
 
+
+# ixlib = env.StaticLibrary("build/ix", object_files['libix'])
+# env.Default(ixlib)
+
 clientlib = env.StaticLibrary("build/logcabin",
-                  (object_files['Client'] +
+                  (object_files['libix'] +
+                   object_files['Client'] +
                    object_files['Tree'] +
                    object_files['Protocol'] +
                    object_files['RPC'] +
                    object_files['Event'] +
-                   object_files['Core']))
+                   object_files['Core']
+                   ),                        
+             )
+
 env.Default(clientlib)
 
 daemon = env.Program("build/LogCabin",
@@ -268,8 +287,11 @@ daemon = env.Program("build/LogCabin",
              object_files['Protocol'] +
              object_files['RPC'] +
              object_files['Event'] +
-             object_files['Core']),
-            LIBS = [ "pthread", "protobuf", "rt", "cryptopp" ])
+             object_files['Core'] +
+             object_files['libix']
+             ),
+            LIBS = [ "pthread", "protobuf", "rt", "cryptopp" ],
+	    )
 env.Default(daemon)
 
 storageTool = env.Program("build/Storage/Tool",
@@ -281,8 +303,11 @@ storageTool = env.Program("build/Storage/Tool",
              object_files['Storage'] +
              object_files['Tree'] +
              object_files['Protocol'] +
-             object_files['Core']),
-            LIBS = [ "pthread", "protobuf", "rt", "cryptopp" ])
+             object_files['Core'] +
+             object_files['libix']
+             ),
+            LIBS = [ "pthread", "protobuf", "rt", "cryptopp"],
+	        )
 env.Default(storageTool)
 
 # Create empty directory so that it can be installed to /var/log/logcabin

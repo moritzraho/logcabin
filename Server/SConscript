@@ -1,5 +1,6 @@
 Import('env', 'object_files')
 
+
 src = [
     "ClientService.cc",
     "ControlService.cc",
@@ -7,9 +8,12 @@ src = [
     "RaftConsensus.cc",
     "RaftConsensusInvariants.cc",
     "RaftService.cc",
-    "ServerStats.cc",
     "StateMachine.cc",
 ]
+
+if not env["IX"]:
+   src.append("ServerStats.cc")
+
 object_files['Server'] = (env.StaticObject(src) +
                           env.Protobuf("SnapshotMetadata.proto") +
                           env.Protobuf("SnapshotStateMachine.proto") +

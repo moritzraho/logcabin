@@ -15,8 +15,13 @@
  */
 
 #include "Core/Mutex.h"
-#include "RPC/ClientSession.h"
 #include "RPC/OpaqueClientRPC.h"
+
+#ifndef IX_TARGET_BUILD
+#include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 namespace LogCabin {
 namespace RPC {
@@ -102,6 +107,7 @@ OpaqueClientRPC::peekReply()
 void
 OpaqueClientRPC::waitForReply(TimePoint timeout)
 {
+
     std::unique_lock<std::mutex> mutexGuard(mutex);
     if (status != Status::NOT_READY)
         return;

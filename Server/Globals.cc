@@ -19,13 +19,17 @@
 #include "Core/Debug.h"
 #include "Core/StringUtil.h"
 #include "Protocol/Common.h"
-#include "RPC/Server.h"
 #include "Server/ClientService.h"
 #include "Server/ControlService.h"
 #include "Server/Globals.h"
 #include "Server/RaftConsensus.h"
 #include "Server/RaftService.h"
 #include "Server/StateMachine.h"
+#ifndef IX_TARGET_BUILD
+#include "RPC/Server.h"
+#else
+#include "RPC/ServerIX.h"
+#endif
 
 namespace LogCabin {
 namespace Server {
@@ -72,6 +76,7 @@ Globals::LogRotateHandler::handleSignalEvent()
 
 Globals::Globals()
     : config()
+#ifndef IX_TARGET_BUILD
     , serverStats(*this)
     , eventLoop()
     , sigIntBlocker(SIGINT)
@@ -84,6 +89,7 @@ Globals::Globals()
     , sigTermMonitor(eventLoop, sigTermHandler)
     , sigUsr2Handler(eventLoop, SIGUSR2)
     , sigUsr2Monitor(eventLoop, sigUsr2Handler)
+#endif
     , clusterUUID()
     , serverId(~0UL)
     , raft()
@@ -97,7 +103,9 @@ Globals::Globals()
 
 Globals::~Globals()
 {
+#ifndef IX_TARGET_BUILD
     serverStats.exit();
+#endif
 }
 
 void
@@ -108,10 +116,12 @@ Globals::init()
         clusterUUID.set(uuid);
     serverId = config.read<uint64_t>("serverId");
     Core::Debug::processName = Core::StringUtil::format("%lu", serverId);
+#ifndef IX_TARGET_BUILD
     {
         ServerStats::Lock serverStatsLock(serverStats);
         serverStatsLock->set_server_id(serverId);
     }
+#endif
     if (!raft) {
         raft.reset(new RaftConsensus(*this));
         raft->serverId = serverId;
@@ -130,8 +140,11 @@ Globals::init()
     }
 
     if (!rpcServer) {
-        rpcServer.reset(new RPC::Server(eventLoop,
-                                        Protocol::Common::MAX_MESSAGE_LENGTH));
+        rpcServer.reset(new RPC::Server(
+#ifndef IX_TARGET_BUILD
+                            eventLoop,
+#endif
+                            Protocol::Common::MAX_MESSAGE_LENGTH));
 
         uint32_t maxThreads = config.read<uint16_t>("maxThreads", 16);
         namespace ServiceId = Protocol::Common::ServiceId;
@@ -147,11 +160,13 @@ Globals::init()
 
         std::string listenAddressesStr =
             config.read<std::string>("listenAddresses");
+#ifndef IX_TARGET_BUILD
         {
             ServerStats::Lock serverStatsLock(serverStats);
             serverStatsLock->set_server_id(serverId);
             serverStatsLock->set_addresses(listenAddressesStr);
         }
+#endif
         std::vector<std::string> listenAddresses =
             Core::StringUtil::split(listenAddressesStr, ',');
         if (listenAddresses.empty()) {
@@ -161,8 +176,13 @@ Globals::init()
              it != listenAddresses.end();
              ++it) {
             RPC::Address address(*it, Protocol::Common::DEFAULT_PORT);
+
+#ifndef IX_TARGET_BUILD
             address.refresh(RPC::Address::TimePoint::max());
             std::string error = rpcServer->bind(address);
+#else
+            std::string error = rpcServer->bind();
+#endif
             if (!error.empty()) {
                 EXIT("Could not listen on address %s: %s",
                      address.toString().c_str(),
@@ -178,32 +198,41 @@ Globals::init()
     if (!stateMachine) {
         stateMachine.reset(new StateMachine(raft, config, *this));
     }
-
+#ifndef IX_TARGET_BUILD
     serverStats.enable();
+#endif
 }
 
 void
 Globals::leaveSignalsBlocked()
 {
+#ifndef IX_TARGET_BUILD
     sigIntBlocker.leaveBlocked();
     sigTermBlocker.leaveBlocked();
     sigUsr1Blocker.leaveBlocked();
     sigUsr2Blocker.leaveBlocked();
+#endif
 }
 
 void
 Globals::run()
 {
+#ifdef IX_TARGET_BUILD
+    rpcServer->set_and_wait(); // runs ixev_wait
+#else
     eventLoop.runForever();
+#endif
 }
 
 void
 Globals::unblockAllSignals()
 {
+#ifndef IX_TARGET_BUILD
     sigIntBlocker.unblock();
     sigTermBlocker.unblock();
     sigUsr1Blocker.unblock();
     sigUsr2Blocker.unblock();
+#endif
 }
 
 

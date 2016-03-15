@@ -1,16 +1,32 @@
 Import('env', 'object_files')
 
-src = [
-    "Address.cc",
-    "ClientRPC.cc",
-    "ClientSession.cc",
-    "MessageSocket.cc",
-    "OpaqueClientRPC.cc",
-    "OpaqueServer.cc",
-    "OpaqueServerRPC.cc",
-    "Protocol.cc",
-    "Server.cc",
-    "ServerRPC.cc",
-    "ThreadDispatchService.cc",
-]
+if env["IX"]:
+    src = [
+        "Address.cc",
+        "ClientRPC.cc",
+        "ClientSessionIX.cc",
+        "InterfaceIX.cc",
+        "OpaqueClientRPC.cc",
+        "OpaqueServerIX.cc",
+        "OpaqueServerRPCIX.cc",
+        "Protocol.cc",
+        "ServerIX.cc",
+        "ServerRPC.cc",
+        "ThreadDispatchService.cc",
+    ]
+else:
+    src = [
+        "Address.cc",
+        "ClientRPC.cc",
+        "ClientSession.cc",
+        "MessageSocket.cc",
+        "OpaqueClientRPC.cc",
+        "OpaqueServer.cc",
+        "OpaqueServerRPC.cc",
+        "Protocol.cc",
+        "Server.cc",
+        "ServerRPC.cc",
+        "ThreadDispatchService.cc",
+    ]
+
 object_files['RPC'] = env.StaticObject(src)

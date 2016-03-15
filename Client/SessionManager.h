@@ -132,16 +132,14 @@ class SessionManager {
     /**
      * Construtor. Takes a couple of parameters that are common to all sessions
      * so that you don't have to repeatedly provide them to createSession.
-     * \param eventLoop
-     *      Event::Loop that will be used to find out when the session's
-     *      underlying socket may be read from or written to without blocking.
-     *      This object keeps a reference.
      * \param config
      *      General settings. This object keeps a reference.
      */
-    SessionManager(Event::Loop& eventLoop,
-                   const Core::Config& config);
-
+#ifndef IX_TARGET_BUILD
+    SessionManager(Event::Loop& eventLoop, const Core::Config& config);
+#else
+    SessionManager(const Core::Config& config);
+#endif
 
     /**
      * Connect to the given address.
@@ -163,7 +161,9 @@ class SessionManager {
                   ClusterUUID* clusterUUID = NULL,
                   ServerId* serverId = NULL);
 
+#ifndef IX_TARGET_BUILD
     Event::Loop& eventLoop;
+#endif
   private:
     const Core::Config& config;
     /**

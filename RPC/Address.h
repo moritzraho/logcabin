@@ -115,6 +115,10 @@ class Address {
      */
     void refresh(TimePoint timeout);
 
+    // hack: returns address and port at index i
+    std::string getAddressAt(int i) const;
+    std::string getPortAt(int i) const;
+
   private:
 
     /**

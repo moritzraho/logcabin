@@ -35,11 +35,15 @@
 #include "Core/Util.h"
 #include "Protocol/Common.h"
 #include "RPC/ClientRPC.h"
-#include "RPC/ClientSession.h"
 #include "RPC/ServerRPC.h"
 #include "Server/RaftConsensus.h"
 #include "Server/Globals.h"
 #include "Storage/LogFactory.h"
+#ifndef IX_TARGET_BUILD
+#include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 namespace LogCabin {
 namespace Server {
@@ -162,7 +166,9 @@ LocalServer::updatePeerStats(Protocol::ServerStats::Raft::Peer& peerStats,
 Peer::Peer(uint64_t serverId, RaftConsensus& consensus)
     : Server(serverId)
     , consensus(consensus)
+#ifndef IX_TARGET_BUILD
     , eventLoop(consensus.globals.eventLoop)
+#endif
     , exiting(false)
     , requestVoteDone(false)
     , haveVote_(false)
@@ -964,8 +970,11 @@ RaftConsensus::RaftConsensus(Globals& globals)
     , serverAddresses()
     , globals(globals)
     , storageLayout()
-    , sessionManager(globals.eventLoop,
-                     globals.config)
+    , sessionManager(
+#ifndef IX_TARGET_BUILD
+        globals.eventLoop,
+#endif
+        globals.config)
     , mutex()
     , stateChanged()
     , exiting(false)
@@ -1537,6 +1546,7 @@ RaftConsensus::handleRequestVote(
                     (request.last_log_term() == lastLogTerm &&
                      request.last_log_index() >= lastLogIndex));
 
+    NOTICE("LOGISOK : %d", (int)logIsOk);
     if (withholdVotesUntil > Clock::now()) {
         NOTICE("Rejecting RequestVote for term %lu from server %lu, since "
                "this server (which is in term %lu) recently heard from a "

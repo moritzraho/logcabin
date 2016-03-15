@@ -18,7 +18,12 @@
 #include <google/protobuf/message.h>
 
 #include "RPC/Protocol.h"
+
+#ifndef IX_TARGET_BUILD
 #include "RPC/OpaqueServerRPC.h"
+#else
+#include "RPC/OpaqueServerRPCIX.h"
+#endif
 
 #ifndef LOGCABIN_RPC_SERVERRPC_H
 #define LOGCABIN_RPC_SERVERRPC_H

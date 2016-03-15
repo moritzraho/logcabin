@@ -1,0 +1,3 @@
+Import('env', 'object_files')
+src = ["mempool.c","mem.c", "ixev.c", "main.c", "ixev_timer.c"]
+object_files['libix'] = env.StaticObject(src)

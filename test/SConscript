@@ -35,6 +35,7 @@ testrunner = env.Program("test",
              object_files['RPC'] +
              object_files['Event'] +
              object_files['Core'] +
+             object_files['libix'] +
              GetTestFiles([
                  "#Core",
                  "#Event",

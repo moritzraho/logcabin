@@ -27,6 +27,10 @@
 #include "Server/Globals.h"
 #include "Server/RaftConsensus.h"
 
+extern "C" {
+#include "libix/ixev.h"
+}
+
 namespace {
 
 /**
@@ -271,11 +275,11 @@ class PidFile {
 
 } // anonymous namespace
 
+
 int
 main(int argc, char** argv)
 {
     using namespace LogCabin;
-
     try {
         Core::ThreadId::setName("evloop");
 

@@ -71,8 +71,9 @@ ServerStats::SignalHandler::handleSignalEvent()
 //// class ServerStats::Deferred ////
 
 ServerStats::Deferred::Deferred(ServerStats& serverStats)
-    : signalHandler(serverStats)
-    , signalMonitor(serverStats.globals.eventLoop, signalHandler)
+  :  signalHandler(serverStats)
+    , signalMonitor(serverStats.globals.eventLoop,
+                    signalHandler)
     , dumpInterval(std::chrono::milliseconds(
         serverStats.globals.config.read<uint64_t>(
             "statsDumpIntervalMilliseconds", 60000)))

@@ -122,14 +122,19 @@ class Globals {
      * Statistics and information about the server's current state. Useful for
      * diagnostics.
      */
+#ifndef IX_TARGET_BUILD
     Server::ServerStats serverStats;
+#endif
 
     /**
      * The event loop that runs the RPC system.
      */
+#ifndef IX_TARGET_BUILD
     Event::Loop eventLoop;
+#endif
 
   private:
+#ifndef IX_TARGET_BUILD
     /**
      * Block SIGINT, which is handled by sigIntHandler.
      * Signals are blocked early on in the startup process so that newly
@@ -182,6 +187,7 @@ class Globals {
      * Registers sigUsr2Handler with the event loop.
      */
     Event::Signal::Monitor sigUsr2Monitor;
+#endif
 
   public:
     /**

@@ -11,6 +11,7 @@ src = [
     "SessionManager.cc",
     "Util.cc",
 ]
+
 object_files['Client'] = env.StaticObject(src)
 
 env.Default([

@@ -1,6 +1,9 @@
 *.pyc
+*\~
+*~
+\#*
+.#*
 /.sconsign.dblite
-/Local.sc
 /Local.sc.bck
 /build
 /debug
@@ -8,5 +11,13 @@
 /logcabin*.conf
 /scripts/localconfig.py
 /smoketest*.conf
+/benchtest*.conf
 /smoketeststorage
 /storage
+/teststorage
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+libix/*.o
+libix/*.a

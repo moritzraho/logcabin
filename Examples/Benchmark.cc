@@ -36,6 +36,11 @@
 #include <LogCabin/Debug.h>
 #include <LogCabin/Util.h>
 
+#include <mutex>
+#include <map>
+
+std::mutex m;
+
 namespace {
 
 using LogCabin::Client::Cluster;
@@ -57,6 +62,7 @@ class OptionParser {
         , size(1024)
         , writers(1)
         , totalWrites(1000)
+	, wait(10)
         , timeout(parseNonNegativeDuration("30s"))
     {
         while (true) {
@@ -67,6 +73,7 @@ class OptionParser {
                {"threads",  required_argument, NULL, 't'},
                {"timeout",  required_argument, NULL, 'd'},
                {"writes",  required_argument, NULL, 'w'},
+	       {"wait",  required_argument, NULL, 'z'},
                {"verbose",  no_argument, NULL, 'v'},
                {"verbosity",  required_argument, NULL, 256},
                {0, 0, 0, 0}
@@ -93,9 +100,12 @@ class OptionParser {
                 case 't':
                     writers = uint64_t(atol(optarg));
                     break;
-                case 'w':
+	        case 'w':
                     totalWrites = uint64_t(atol(optarg));
                     break;
+	        case 'z':
+		    wait = uint32_t(atol(optarg));
+		    break;
                 case 'v':
                     logPolicy = "VERBOSE";
                     break;
@@ -154,11 +164,15 @@ class OptionParser {
             << std::endl
 
             << "  --timeout <time>        "
-            << "Time after which to exit [default: 30s]"
+            << "Time after which to exit, 0 for no timeout [default: 30s]"
             << std::endl
 
             << "  --writes <num>          "
             << "Number of total writes [default: 1000]"
+            << std::endl
+
+	    << "  --wait <time>          "
+            << "Number of time to wait between each write [default: 10us]"
             << std::endl
 
             << "  -v, --verbose           "
@@ -181,7 +195,7 @@ class OptionParser {
             << "Example: Client@NOTICE,Test.cc@SILENT,VERBOSE."
             << std::endl;
     }
-
+    
     int& argc;
     char**& argv;
     std::string cluster;
@@ -189,8 +203,24 @@ class OptionParser {
     uint64_t size;
     uint64_t writers;
     uint64_t totalWrites;
+    uint32_t wait;
     uint64_t timeout;
+    
 };
+
+
+
+/**
+ * Return the time since the Unix epoch in nanoseconds.
+ */
+uint64_t timeNanos()
+{
+    struct timespec now;
+    int r = clock_gettime(CLOCK_REALTIME, &now);
+    assert(r == 0);
+    return uint64_t(now.tv_sec) * 1000 * 1000 * 1000 + uint64_t(now.tv_nsec);
+}
+
 
 /**
  * The main function for a single client thread.
@@ -218,28 +248,50 @@ writeThreadMain(uint64_t id,
                 std::atomic<bool>& exit,
                 uint64_t& writesDone)
 {
+  uint64_t prev_t, t, w_mod;
     uint64_t numWrites = options.totalWrites / options.writers;
     // assign any odd leftover writes in a balanced way
     if (options.totalWrites - numWrites * options.writers > id)
         numWrites += 1;
+
+    //very approximate number of writes within 1 seconds, assuming 30ms worst per write
+    w_mod = (uint64_t)2e6/(options.wait + 40000);
+    if (!w_mod)
+      w_mod = 1;
+    
+    //std::cout << w_mod << std::endl;
+
     for (uint64_t i = 0; i < numWrites; ++i) {
         if (exit)
-            break;
+	    break;
+	
+	usleep(options.wait);
         tree.writeEx(key, value);
-        writesDone = i + 1;
+	writesDone = i;
+
+	//skip first write which is slower
+	if(i==0){
+	    prev_t = timeNanos();
+	}
+	else if(i%w_mod==0){
+	    t = timeNanos() - prev_t;
+	   
+	    //only some thread
+	    if(id % 20 == 0){
+		m.lock();
+		std::cout << ((double)options.writers * ((double)w_mod/((double)t/1e9)))
+			  << "\t\t" //<< t << "\t\t"
+		    //latency in ms
+			  << (((double)t/1e6)/(double) w_mod) - (double)options.wait/1e3
+			  << std::endl;
+		m.unlock();
+	    }
+
+	    prev_t = timeNanos();
+	}
     }
 }
 
-/**
- * Return the time since the Unix epoch in nanoseconds.
- */
-uint64_t timeNanos()
-{
-    struct timespec now;
-    int r = clock_gettime(CLOCK_REALTIME, &now);
-    assert(r == 0);
-    return uint64_t(now.tv_sec) * 1000 * 1000 * 1000 + uint64_t(now.tv_nsec);
-}
 
 /**
  * Main function for the timer thread, whose job is to wait until a particular
@@ -254,15 +306,17 @@ uint64_t timeNanos()
 void
 timerThreadMain(uint64_t timeout, std::atomic<bool>& exit)
 {
-    uint64_t start = timeNanos();
-    while (!exit) {
-        usleep(50 * 1000);
-        if ((timeNanos() - start) > timeout) {
-            exit = true;
+    if (timeout) {
+        uint64_t start = timeNanos();
+        while (!exit) {
+            usleep(50 * 1000);
+            if ((timeNanos() - start) > timeout) {
+                exit = true;
+            }
         }
     }
-}
 
+}
 } // anonymous namespace
 
 int
@@ -274,7 +328,12 @@ main(int argc, char** argv)
         LogCabin::Client::Debug::setLogPolicy(
             LogCabin::Client::Debug::logPolicyFromString(
                 options.logPolicy));
-        Cluster cluster = Cluster(options.cluster);
+
+        std::map<std::string, std::string> opts;
+        opts["tcpConnectTimeoutMilliseconds"] = "10000";
+        opts["tcpHeartbeatTimeoutMilliseconds"] = "5000";
+
+        Cluster cluster = Cluster(options.cluster,opts);
         Tree tree = cluster.getTree();
 
         std::string key("/bench");
@@ -301,7 +360,7 @@ main(int argc, char** argv)
         timer.join();
 
         tree.removeFile(key);
-        std::cout << "Benchmark took "
+        std::cerr << "Benchmark took "
                   << static_cast<double>(endNanos - startNanos) / 1e6
                   << " ms to write "
                   << totalWritesDone

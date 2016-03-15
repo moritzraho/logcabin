@@ -23,7 +23,12 @@
 #include "Protocol/Common.h"
 #include "RPC/Address.h"
 #include "RPC/ClientRPC.h"
+
+#ifndef IX_TARGET_BUILD
 #include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 namespace LogCabin {
 namespace Client {
@@ -438,9 +443,15 @@ ClientImpl::absTimeout(uint64_t relTimeoutNanos)
 
 ClientImpl::ClientImpl(const std::map<std::string, std::string>& options)
     : config(options)
+#ifndef IX_TARGET_BUILD
     , eventLoop()
+#endif
     , clusterUUID()
-    , sessionManager(eventLoop, config)
+    , sessionManager(
+#ifndef IX_TARGET_BUILD
+      eventLoop,
+#endif
+      config)
     , sessionCreationBackoff(5,                   // 5 new connections per
                              100UL * 1000 * 1000) // 100 ms
     , hosts()
@@ -461,7 +472,9 @@ ClientImpl::ClientImpl(const std::map<std::string, std::string>& options)
 ClientImpl::~ClientImpl()
 {
     exactlyOnceRPCHelper.exit();
+#ifndef IX_TARGET_BUILD
     eventLoop.exit();
+#endif
     if (eventLoopThread.joinable())
         eventLoopThread.join();
 }
@@ -470,7 +483,9 @@ void
 ClientImpl::init(const std::string& hosts)
 {
     this->hosts = hosts;
+#ifndef IX_TARGET_BUILD
     eventLoopThread = std::thread(&Event::Loop::runForever, &eventLoop);
+#endif
     initDerived();
 }
 

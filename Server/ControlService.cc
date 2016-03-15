@@ -180,18 +180,30 @@ ControlService::serverInfoGet(RPC::ServerRPC rpc)
 void
 ControlService::serverStatsDump(RPC::ServerRPC rpc)
 {
+#ifndef IX_TARGET_BUILD
     PRELUDE(ServerStatsDump);
     NOTICE("Requested dump of ServerStats through ServerControl RPC");
     globals.serverStats.dumpToDebugLog();
     rpc.reply(response);
+#else
+    PRELUDE(ServerStatsDump);
+    NOTICE("Server stats not implemented in IX");
+    rpc.reply(response);
+#endif
 }
 
 void
 ControlService::serverStatsGet(RPC::ServerRPC rpc)
 {
+#ifndef IX_TARGET_BUILD
     PRELUDE(ServerStatsGet);
     *response.mutable_server_stats() = globals.serverStats.getCurrent();
     rpc.reply(response);
+#else
+    PRELUDE(ServerStatsGet);
+    NOTICE("Server stats not implemented in IX");
+    rpc.reply(response);
+#endif
 }
 
 void

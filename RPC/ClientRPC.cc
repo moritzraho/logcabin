@@ -18,7 +18,12 @@
 #include "Core/ProtoBuf.h"
 #include "RPC/Protocol.h"
 #include "RPC/ClientRPC.h"
+
+#ifndef IX_TARGET_BUILD
 #include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 namespace LogCabin {
 namespace RPC {
@@ -38,6 +43,7 @@ ClientRPC::ClientRPC(std::shared_ptr<RPC::ClientSession> session,
     , opCode(opCode)
     , opaqueRPC() // placeholder, set again below
 {
+
     // Serialize the request into a Buffer
     Core::Buffer requestBuffer;
     Core::ProtoBuf::serialize(request, requestBuffer,

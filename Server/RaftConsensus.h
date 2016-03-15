@@ -354,8 +354,9 @@ class Peer : public Server {
      * A reference to the server's event loop, needed to construct new
      * sessions.
      */
+#ifndef IX_TARGET_BUILD
     Event::Loop& eventLoop;
-
+#endif
     /**
      * Set to true when thread should exit.
      */

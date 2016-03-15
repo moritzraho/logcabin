@@ -18,19 +18,31 @@
 #include "Core/ProtoBuf.h"
 #include "Protocol/Common.h"
 #include "RPC/ClientRPC.h"
-#include "RPC/ClientSession.h"
 #include "build/Protocol/Client.pb.h"
+#ifndef IX_TARGET_BUILD
+#include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 namespace LogCabin {
 namespace Client {
 
-SessionManager::SessionManager(Event::Loop& eventLoop,
-                               const Core::Config& config)
+#ifndef IX_TARGET_BUILD
+SessionManager::SessionManager(Event::Loop& eventLoop, const Core::Config& config)
     : eventLoop(eventLoop)
     , config(config)
     , skipVerify(false)
 {
 }
+
+#else
+SessionManager::SessionManager(const Core::Config& config)
+    :config(config)
+    , skipVerify(false)
+{
+}
+#endif
 
 std::shared_ptr<RPC::ClientSession>
 SessionManager::createSession(const RPC::Address& address,
@@ -40,11 +52,15 @@ SessionManager::createSession(const RPC::Address& address,
 {
     std::shared_ptr<RPC::ClientSession> session =
         RPC::ClientSession::makeSession(
-                        eventLoop,
-                        address,
-                        Protocol::Common::MAX_MESSAGE_LENGTH,
-                        timeout,
-                        config);
+#ifndef IX_TARGET_BUILD
+            eventLoop,
+#endif
+            address,
+            Protocol::Common::MAX_MESSAGE_LENGTH,
+            timeout,
+            config
+        );
+
     if (!session->getErrorMessage().empty() || skipVerify)
         return session;
 
@@ -59,6 +75,7 @@ SessionManager::createSession(const RPC::Address& address,
         if (c.first)
             request.set_server_id(c.second);
     }
+
 
     RPC::ClientRPC rpc(session,
                        Protocol::Common::ServiceId::CLIENT_SERVICE,
@@ -116,7 +133,9 @@ SessionManager::createSession(const RPC::Address& address,
                   "VerifyRecipient RPC or claims the request is malformed");
     }
     return RPC::ClientSession::makeErrorSession(
+#ifndef IX_TARGET_BUILD
         eventLoop,
+#endif
         Core::StringUtil::format("Verifying recipient with %s failed "
                                  "(after connecting over TCP)",
                                  address.toString().c_str()));

@@ -191,6 +191,7 @@ ServerRPC::reject(RPC::Protocol::Status status)
         &responseHeader,
         sizeof(responseHeader),
         Core::Buffer::deleteObjectFn<ResponseHeaderVersion1*>);
+    NOTICE("REJECTING request");
     opaqueRPC.sendReply();
 }
 

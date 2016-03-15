@@ -170,7 +170,9 @@ class ClientImpl {
     /**
      * The Event::Loop used to drive the underlying RPC mechanism.
      */
+#ifndef IX_TARGET_BUILD
     Event::Loop eventLoop;
+#endif
 
     /**
      * A unique ID for the cluster that this client may connect to. This is

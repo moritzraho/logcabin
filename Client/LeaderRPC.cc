@@ -21,8 +21,13 @@
 #include "Core/Debug.h"
 #include "Core/Util.h"
 #include "Protocol/Common.h"
-#include "RPC/ClientSession.h"
 #include "RPC/ClientRPC.h"
+
+#ifndef IX_TARGET_BUILD
+#include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 namespace LogCabin {
 namespace Client {
@@ -187,7 +192,10 @@ LeaderRPC::call(OpCode opCode,
     while (true) {
         Call c(*this);
         c.start(opCode, request, timeout);
+
+        // we should not wait ! cause ix runs to completion
         Call::Status callStatus = c.wait(response, timeout);
+
         switch (callStatus) {
             case Call::Status::OK:
                 return Status::OK;
@@ -221,7 +229,9 @@ LeaderRPC::getSession(TimePoint timeout)
         connected.wait_until(lockGuard, timeout);
         if (Clock::now() > timeout) {
             return RPC::ClientSession::makeErrorSession(
+#ifndef IX_TARGET_BUILD
                 sessionManager.eventLoop,
+#endif
                 "Failed to get session to leader in time that another thread "
                 "is creating: timeout expired");
         }
@@ -257,7 +267,9 @@ LeaderRPC::getSession(TimePoint timeout)
         sessionCreationBackoff.delayAndBegin(timeout);
         if (Clock::now() > timeout) {
             session = RPC::ClientSession::makeErrorSession(
-                    sessionManager.eventLoop,
+#ifndef IX_TARGET_BUILD
+                sessionManager.eventLoop,
+#endif
                     "Failed to create session to leader: timeout expired");
             usedHint = false;
         } else {

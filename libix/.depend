@@ -1,0 +1,18 @@
+main.o: main.c syscall.h ../inc/ix/syscall.h ../inc/ix/compiler.h \
+ ../inc/ix/types.h ../inc/asm/cpu.h ../inc/ix/cpu.h ../inc/ix/stddef.h \
+ ../inc/ix/mem.h ../inc/ix/lock.h ../inc/ix/vm.h syscall_raw.h ix.h
+mem.o: mem.c ../inc/ix/stddef.h ../inc/ix/compiler.h ../inc/ix/types.h \
+ ../inc/asm/cpu.h ix.h syscall.h ../inc/ix/syscall.h ../inc/ix/cpu.h \
+ ../inc/ix/mem.h ../inc/ix/lock.h ../inc/ix/vm.h syscall_raw.h
+mempool.o: mempool.c ../inc/ix/errno.h ix.h syscall.h ../inc/ix/syscall.h \
+ ../inc/ix/compiler.h ../inc/ix/types.h ../inc/asm/cpu.h ../inc/ix/cpu.h \
+ ../inc/ix/stddef.h ../inc/ix/mem.h ../inc/ix/lock.h ../inc/ix/vm.h \
+ syscall_raw.h mempool.h
+ixev.o: ixev.c ../inc/ix/stddef.h ../inc/ix/compiler.h ../inc/ix/types.h \
+ ../inc/asm/cpu.h mempool.h ../inc/ix/mem.h ../inc/ix/lock.h ixev.h ix.h \
+ syscall.h ../inc/ix/syscall.h ../inc/ix/cpu.h ../inc/ix/vm.h \
+ syscall_raw.h buf.h ixev_timer.h
+ixev_timer.o: ixev_timer.c ixev_timer.h syscall.h ../inc/ix/syscall.h \
+ ../inc/ix/compiler.h ../inc/ix/types.h ../inc/asm/cpu.h ../inc/ix/cpu.h \
+ ../inc/ix/stddef.h ../inc/ix/mem.h ../inc/ix/lock.h ../inc/ix/vm.h \
+ syscall_raw.h

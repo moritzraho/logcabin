@@ -14,6 +14,7 @@
  */
 
 #include "Core/Buffer.h"
+#include "Core/Debug.h"
 
 namespace LogCabin {
 namespace Core {

@@ -97,9 +97,12 @@ StateMachine::StateMachine(std::shared_ptr<RaftConsensus> consensus,
                                                 MAX_SUPPORTED_VERSION);
     if (!stateMachineSuppressThreads) {
         applyThread = std::thread(&StateMachine::applyThreadMain, this);
+        //SNAPSHOT SEEMS TO DEADLOCK IX: not tested further
+#ifndef IX_TARGET_BUILD
         snapshotThread = std::thread(&StateMachine::snapshotThreadMain, this);
         snapshotWatchdogThread = std::thread(
-                &StateMachine::snapshotWatchdogThreadMain, this);
+            &StateMachine::snapshotWatchdogThreadMain, this);
+#endif
     }
 }
 

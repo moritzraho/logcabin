@@ -22,7 +22,11 @@
 #include "Core/ProtoBuf.h"
 #include "RPC/ClientRPC.h"
 #include "Protocol/Common.h"
+#ifndef IX_TARGET_BUILD
 #include "RPC/ClientSession.h"
+#else
+#include "RPC/ClientSessionIX.h"
+#endif
 
 #ifndef LOGCABIN_SERVER_CLIENTSERVICE_H
 #define LOGCABIN_SERVER_CLIENTSERVICE_H

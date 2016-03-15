@@ -37,7 +37,6 @@ void
 RaftService::handleRPC(RPC::ServerRPC rpc)
 {
     using Protocol::Raft::OpCode;
-
     // Call the appropriate RPC handler based on the request's opCode.
     switch (rpc.getOpCode()) {
         case OpCode::APPEND_ENTRIES:

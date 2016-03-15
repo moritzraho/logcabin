@@ -21,10 +21,16 @@
 #include <LogCabin/Debug.h>
 #include <LogCabin/Util.h>
 
+#include "Core/Debug.h"
+#include "Core/StringUtil.h"
+
+
 namespace {
 
 using LogCabin::Client::Cluster;
+using LogCabin::Client::Server;
 using LogCabin::Client::Tree;
+using LogCabin::Client::Status;
 using LogCabin::Client::Util::parseNonNegativeDuration;
 
 /**
@@ -161,14 +167,29 @@ main(int argc, char** argv)
             LogCabin::Client::Debug::logPolicyFromString(
                 options.logPolicy));
         Cluster cluster(options.cluster);
+
         Tree tree = cluster.getTree();
         tree.setTimeout(options.timeout);
         tree.makeDirectoryEx("/etc");
+        NOTICE("made directory");
         tree.writeEx("/etc/passwd", "ha");
+        NOTICE("wrote value");
         std::string contents = tree.readEx("/etc/passwd");
+        NOTICE("read value");
         assert(contents == "ha");
         tree.removeDirectoryEx("/etc");
-        return 0;
+        NOTICE("removed dir");
+        NOTICE("CLIENT_SUCCESS??");
+        // std::vector<std::string> hostsList = LogCabin::Core::StringUtil::split(options.cluster, ',');
+
+        // Server info;
+        // auto res = cluster.getServerInfo(hostsList[0], 0, info);
+        // if(res.status != Status::OK)
+        //     PANIC("connection not successful, error: %s", res.error.c_str());
+        // else
+        //     NOTICE("Connection succesful!\nServer info: %lu, %s",info.serverId, info.addresses.c_str());
+        // return 0;
+
 
     } catch (const LogCabin::Client::Exception& e) {
         std::cerr << "Exiting due to LogCabin::Client::Exception: "

@@ -88,8 +88,8 @@ ClientService::getName() const
 #define PRELUDE(rpcClass) \
     Protocol::Client::rpcClass::Request request; \
     Protocol::Client::rpcClass::Response response; \
-    if (!rpc.getRequest(request)) \
-        return;
+    if (!rpc.getRequest(request)){                 \
+        return;}
 
 ////////// RPC handlers //////////
 
@@ -98,6 +98,7 @@ void
 ClientService::getServerInfo(RPC::ServerRPC rpc)
 {
     PRELUDE(GetServerInfo);
+
     Protocol::Client::Server& info = *response.mutable_server_info();
     info.set_server_id(globals.raft->serverId);
     info.set_addresses(globals.raft->serverAddresses);
